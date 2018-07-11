@@ -47,6 +47,8 @@ class UserBackend implements IApacheBackend, UserInterface, IUserBackend {
 	private $groupManager;
 	/** @var \OCP\UserInterface[] */
 	private static $backends = [];
+	/** @var SAMLSettings */
+	private $settings;
 
 	/**
 	 * @param IConfig $config
@@ -55,19 +57,22 @@ class UserBackend implements IApacheBackend, UserInterface, IUserBackend {
 	 * @param IDBConnection $db
 	 * @param IUserManager $userManager
 	 * @param IGroupManager $groupManager
+	 * @param SAMLSettings $settings
 	 */
 	public function __construct(IConfig $config,
 								IURLGenerator $urlGenerator,
 								ISession $session,
 								IDBConnection $db,
 								IUserManager $userManager,
-								IGroupManager $groupManager) {
+								IGroupManager $groupManager,
+								SAMLSettings $settings) {
 		$this->config = $config;
 		$this->urlGenerator = $urlGenerator;
 		$this->session = $session;
 		$this->db = $db;
 		$this->userManager = $userManager;
 		$this->groupManager = $groupManager;
+		$this->settings = $settings;
 	}
 
 	/**
@@ -330,7 +335,8 @@ class UserBackend implements IApacheBackend, UserInterface, IUserBackend {
 	 * {@inheritdoc}
 	 */
 	public function getLogoutUrl() {
-		$slo = $this->config->getAppValue('user_saml', 'idp-singleLogoutService.url', '');
+		$prefix = $this->settings->getPrefix();
+		$slo = $this->config->getAppValue('user_saml', $prefix . 'idp-singleLogoutService.url', '');
 		if($slo === '') {
 			return '';
 		}
@@ -359,7 +365,8 @@ class UserBackend implements IApacheBackend, UserInterface, IUserBackend {
 	 */
 	public function getCurrentUserId() {
 		$samlData = $this->session->get('user_saml.samlUserData');
-		$uidMapping = $this->config->getAppValue('user_saml', 'general-uid_mapping', '');
+		$prefix = $this->settings->getPrefix();
+		$uidMapping = $this->config->getAppValue('user_saml', $prefix . 'general-uid_mapping', '');
 
 		if($uidMapping !== '' && isset($samlData[$uidMapping])) {
 			if(is_array($samlData[$uidMapping])) {
@@ -423,7 +430,8 @@ class UserBackend implements IApacheBackend, UserInterface, IUserBackend {
 
 	private function getAttributeKeys($name)
 	{
-		$keys = explode(' ', $this->config->getAppValue('user_saml', $name, ''));
+		$prefix = $this->settings->getPrefix($name);
+		$keys = explode(' ', $this->config->getAppValue('user_saml', $prefix . $name, ''));
 
 		if (count($keys) === 1 && $keys[0] === '') {
 			throw new \InvalidArgumentException('Attribute is not configured');
